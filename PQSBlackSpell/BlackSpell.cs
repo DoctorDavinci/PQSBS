@@ -14,13 +14,9 @@ namespace PQSBlackSpell
         const int vesLoad = 13;
         IEnumerator<Vessel> vesEnume;
         Vessel tvel;
-        //float thrattle;
         bool loading = true;
         bool crashDamage;
         bool joints;
-        double gravMult;
-        //Quaternion sq;
-        //Vector3 sp;
 
         void CastSpell()
         {
@@ -30,15 +26,27 @@ namespace PQSBlackSpell
             pqs.minDetailDistance = 300000;
             pqs.visRadSeaLevelValue = 200;
             pqs.collapseSeaLevelValue = 200;
-            /*
-            if (loading && stage == 1)
-            {
-                //pqs.SetTarget(tvel.transform);
-                pqs.GetAltitude(tvel.CoM);
-                //Vector3 pos = sp - FlightGlobals.ActiveVessel.transform.position + tvel.transform.position;
-                //pqs.secondaryTarget.parent.SetPositionAndRotation(pos, Quaternion.FromToRotation(Vector3.up, pos));
-            }
-            */
+
+            if (loading)
+                using (var v = FlightGlobals.VesselsLoaded.GetEnumerator())
+                    while (v.MoveNext())
+                        if (sortaLanded(v.Current))
+                            switch(stage)
+                            {
+                                case 0:
+                                    v.Current.SetWorldVelocity(v.Current.gravityForPos * -4 * Time.fixedDeltaTime);
+                                    break;
+                                case 1:
+                                    v.Current.SetWorldVelocity(v.Current.gravityForPos * -2 * Time.fixedDeltaTime);
+                                    break;
+                                case 4:
+                                    v.Current.SetWorldVelocity(v.Current.velocityD / 2);
+                                    break;
+                                default:
+                                    v.Current.SetWorldVelocity(Vector3d.zero);
+                                    break;
+                            }
+
         }
         void FixedUpdate() => CastSpell();
         void LateUpdate() => CastSpell();
@@ -58,28 +66,22 @@ namespace PQSBlackSpell
                         case 0:
                             vesEnume = FlightGlobals.VesselsLoaded.ToList().GetEnumerator();
                             tvel = FlightGlobals.ActiveVessel;
-                            //thrattle = FlightGlobals.ActiveVessel.ctrlState.mainThrottle;
-                            //sq = FlightGlobals.currentMainBody.pqsController.secondaryTarget.parent.rotation;
-                            //sp = FlightGlobals.currentMainBody.pqsController.secondaryTarget.parent.position;
                             ++stage;
                             break;
                         case 1:
                             if (vesEnume.Current != null)
                                 vesEnume.Current.OnFlyByWire -= thratlarasat;
-                            if (vesEnume.MoveNext())// && sortaLanded(vesEnume.Current))
+                            if (vesEnume.MoveNext())
                             {
                                 if (sortaLanded(vesEnume.Current))
                                     FlightGlobals.ForceSetActiveVessel(vesEnume.Current);
                                 vesEnume.Current.OnFlyByWire += thratlarasat;
-                                //    tvel = vesEnume.Current;
                             }
                             else
                             {
                                 vesEnume.Dispose();
                                 ++stage;
                                 FlightGlobals.ForceSetActiveVessel(tvel);
-                                //tvel = FlightGlobals.ActiveVessel;
-                                //FlightGlobals.currentMainBody.pqsController.secondaryTarget.parent.SetPositionAndRotation(sp, sq);
                             }
                             Debug.LogError($"Black Spell entangling {vesEnume.Current?.vesselName}");
                             break;
@@ -95,20 +97,11 @@ namespace PQSBlackSpell
                         case 4:
                             CheatOptions.NoCrashDamage = crashDamage;
                             CheatOptions.UnbreakableJoints = joints;
-                            PhysicsGlobals.GraviticForceMultiplier = gravMult;
-                            //FlightGlobals.ActiveVessel.ctrlState.mainThrottle = thrattle;
                             loading = false;
                             Debug.LogError("Black Spell complete");
                             break;
                     }
                 }
-                if (stage == 4)
-                    PhysicsGlobals.GraviticForceMultiplier = gravMult * (1 - reset / 100);
-                else
-                    using (var v = FlightGlobals.VesselsLoaded.GetEnumerator())
-                        while (v.MoveNext())
-                            if (sortaLanded(v.Current))
-                                v.Current.SetWorldVelocity(Vector3d.zero);
             }
         }
         void Awake()
@@ -116,10 +109,8 @@ namespace PQSBlackSpell
             Debug.LogError("Black Spell channeling");
             crashDamage = CheatOptions.NoCrashDamage;
             joints = CheatOptions.UnbreakableJoints;
-            gravMult = PhysicsGlobals.GraviticForceMultiplier;
             CheatOptions.NoCrashDamage = true;
             CheatOptions.UnbreakableJoints = true;
-            PhysicsGlobals.GraviticForceMultiplier = 0.000001;
         }
         bool sortaLanded(Vessel v) => v.mainBody.GetAltitude(v.CoM) - Math.Max(v.terrainAltitude, 0) < 100;
         void thratlarasat(FlightCtrlState s)
