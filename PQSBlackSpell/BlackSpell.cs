@@ -30,7 +30,7 @@ namespace PQSBlackSpell
             if (loading)
                 using (var v = FlightGlobals.VesselsLoaded.GetEnumerator())
                     while (v.MoveNext())
-                        if (sortaLanded(v.Current))
+                        if (isEligibleVessel(v.Current))
                             switch(stage)
                             {
                                 case 0:
@@ -48,8 +48,11 @@ namespace PQSBlackSpell
                             }
 
         }
+
         void FixedUpdate() => CastSpell();
+
         void LateUpdate() => CastSpell();
+
         void Update()
         {
             CastSpell();
@@ -73,7 +76,7 @@ namespace PQSBlackSpell
                                 vesEnume.Current.OnFlyByWire -= thratlarasat;
                             if (vesEnume.MoveNext())
                             {
-                                if (sortaLanded(vesEnume.Current))
+                                if (isEligibleVessel(vesEnume.Current))
                                     FlightGlobals.ForceSetActiveVessel(vesEnume.Current);
                                 vesEnume.Current.OnFlyByWire += thratlarasat;
                             }
@@ -104,6 +107,7 @@ namespace PQSBlackSpell
                 }
             }
         }
+
         void Awake()
         {
             Debug.LogError("Black Spell channeling");
@@ -112,7 +116,13 @@ namespace PQSBlackSpell
             CheatOptions.NoCrashDamage = true;
             CheatOptions.UnbreakableJoints = true;
         }
-        bool sortaLanded(Vessel v) => v.mainBody.GetAltitude(v.CoM) - Math.Max(v.terrainAltitude, 0) < 100;
+
+        bool isEligibleVessel(Vessel v)
+        {
+            if (v.rootPart.Modules.Contains("ModuleEnemyMine_Naval")) return false;
+            return v.mainBody.GetAltitude(v.CoM) - Math.Max(v.terrainAltitude, 0) < 100;
+        }
+
         void thratlarasat(FlightCtrlState s)
         {
             s.wheelThrottle = 0;
